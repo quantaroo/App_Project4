@@ -13,9 +13,14 @@ def load_data():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     movies = pd.read_csv(os.path.join(current_dir, "movies.csv"))
     ratings = pd.read_csv(os.path.join(current_dir, "ratings.csv"))
-    return movies, ratings
+    
+    # Filter Ratings to Match Movies
+    filtered_ratings = ratings[ratings['movieId'].isin(movies['movieId'])]
+    max_movie_id = movies['movieId'].max()
+    
+    return movies, filtered_ratings, max_movie_id
 
-movies, ratings = load_data()
+movies, ratings, max_movie_id = load_data()
 
 # Create User Rating Vector
 def create_user_vector(selected_movies, max_movie_id):
@@ -27,9 +32,8 @@ def create_user_vector(selected_movies, max_movie_id):
 
 # Recommend Movies
 def recommend_movies(user_vector, ratings_matrix, movies, top_n=10):
-    # Ensure Correct Dimensions
     if user_vector.shape[1] != ratings_matrix.shape[0]:
-        st.error("Dimensional mismatch detected! Check movie and rating data.")
+        st.error(f"Dimensional mismatch detected! User Vector: {user_vector.shape}, Ratings Matrix: {ratings_matrix.shape}")
         return pd.DataFrame(columns=["title", "genres", "Score"])
     
     similarity = cosine_similarity(user_vector, ratings_matrix)[0]
@@ -38,22 +42,16 @@ def recommend_movies(user_vector, ratings_matrix, movies, top_n=10):
     recommendations["Score"] = similarity[top_indices]
     return recommendations
 
-# Validate and Create Ratings Matrix
+# Build Ratings Matrix
+ratings_matrix = csr_matrix(
+    (ratings['rating'], 
+     (ratings['movieId'] - 1, ratings['userId'] - 1)),
+    shape=(max_movie_id, ratings['userId'].max())
+)
+
+# Streamlit App
 st.title("Movie Recommender System")
 st.sidebar.header("Rate Movies")
-
-# Validate Matrix Dimensions
-max_movie_id = movies['movieId'].max()
-max_user_id = ratings['userId'].max()
-
-if ratings['movieId'].max() > max_movie_id or ratings['userId'].max() > max_user_id:
-    st.error("Invalid indices in the ratings dataset. Check for mismatches.")
-else:
-    ratings_matrix = csr_matrix(
-        (ratings['rating'], 
-         (ratings['movieId'] - 1, ratings['userId'] - 1)),
-        shape=(max_movie_id, max_user_id)
-    )
 
 # User Ratings Input
 selected_movies = {}
@@ -64,7 +62,10 @@ for _, row in movies.iterrows():
 # Recommendation Button
 if st.sidebar.button("Show Recommendations"):
     user_vector = create_user_vector(selected_movies, max_movie_id)
-    recommendations = recommend_movies(user_vector, ratings_matrix, movies)
     
-    st.header("Top 10 Recommendations")
-    st.table(recommendations)
+    if user_vector.shape[1] != ratings_matrix.shape[0]:
+        st.error("User vector and ratings matrix dimensions do not match.")
+    else:
+        recommendations = recommend_movies(user_vector, ratings_matrix, movies)
+        st.header("Top 10 Recommendations")
+        st.table(recommendations)
