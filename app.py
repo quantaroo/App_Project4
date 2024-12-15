@@ -17,44 +17,48 @@ def load_data():
 
 movies, ratings = load_data()
 
-# Create User Vector
-def create_user_vector(selected_movies, num_movies):
-    user_ratings = np.zeros(num_movies)
+# Create User Rating Vector
+def create_user_vector(selected_movies):
+    user_ratings = np.zeros(movies['movieId'].max())
     for movie_id, rating in selected_movies.items():
-        try:
-            movie_index = int(movie_id) - 1
-            if 0 <= movie_index < num_movies:
-                user_ratings[movie_index] = rating
-        except (ValueError, TypeError):
-            st.error(f"Invalid movie ID: {movie_id}")
+        if movie_id <= len(user_ratings):
+            user_ratings[movie_id - 1] = rating
     return csr_matrix(user_ratings.reshape(1, -1))
 
 # Recommend Movies
 def recommend_movies(user_vector, ratings_matrix, movies, top_n=10):
     similarity = cosine_similarity(user_vector, ratings_matrix)[0]
-    top_indices = similarity.argsort()[-top_n:][::-1]
+    top_indices = np.argsort(similarity)[-top_n:][::-1]
     recommendations = movies.iloc[top_indices][["title", "genres"]]
     recommendations["Score"] = similarity[top_indices]
     return recommendations
 
-# Build Streamlit App
+# Validate and Create Ratings Matrix
 st.title("Movie Recommender System")
 st.sidebar.header("Rate Movies")
 
+# Validate Matrix Dimensions
+max_movie_id = movies['movieId'].max()
+max_user_id = ratings['userId'].max()
+
+if ratings['movieId'].max() > max_movie_id or ratings['userId'].max() > max_user_id:
+    st.error("Invalid indices in the ratings dataset. Check for mismatches.")
+else:
+    ratings_matrix = csr_matrix(
+        (ratings['rating'], 
+         (ratings['movieId'] - 1, ratings['userId'] - 1)),
+        shape=(max_movie_id, max_user_id)
+    )
+
 # User Ratings Input
 selected_movies = {}
-for index, row in movies.iterrows():
+for _, row in movies.iterrows():
     rating = st.sidebar.slider(f"{row['title']} ({row['genres']})", 1, 5, 3)
-    selected_movies[str(row['movieId'])] = rating
+    selected_movies[row['movieId']] = rating
 
 # Recommendation Button
 if st.sidebar.button("Show Recommendations"):
-    user_vector = create_user_vector(selected_movies, movies.shape[0])
-    ratings_matrix = csr_matrix(
-        (ratings['rating'], (ratings['movieId'] - 1, ratings['userId'] - 1)),
-        shape=(movies.shape[0], ratings['userId'].max())
-    )
-    
+    user_vector = create_user_vector(selected_movies)
     recommendations = recommend_movies(user_vector, ratings_matrix, movies)
     
     st.header("Top 10 Recommendations")
