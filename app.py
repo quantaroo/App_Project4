@@ -2,6 +2,12 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+# set_page_config must come before any UI commands
+st.set_page_config(page_title="Movie Recommender System", layout="wide")
+
+# Now proceed with the rest of your code
+st.title("Movie Recommender System")
+
 # ==============================================
 # Data Loading (Dummy Placeholders)
 # ==============================================
