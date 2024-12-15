@@ -1,3 +1,5 @@
+# Streamlit Movie Recommender System
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -11,28 +13,36 @@ def load_data():
     ratings = pd.read_csv("ratings.csv")
     return movies, ratings
 
-# Filter Ratings by Selected Movies
-def filter_ratings(ratings, selected_movie_ids):
-    return ratings[ratings['movieId'].isin(selected_movie_ids)]
+movies, ratings = load_data()
+
+# Filter Ratings by Available Movies
+filtered_ratings = ratings[ratings['movieId'].isin(movies['movieId'])]
+
+# Re-index Movie IDs
+movie_id_map = {movie_id: idx for idx, movie_id in enumerate(movies['movieId'].unique())}
+
+# Create Ratings Matrix
+ratings_matrix = csr_matrix(
+    (filtered_ratings['rating'], 
+     (filtered_ratings['movieId'].map(movie_id_map), filtered_ratings['userId']))
+)
 
 # Create User Vector
-def create_user_vector(selected_movies, movie_id_map):
-    user_ratings = np.zeros(len(movie_id_map))
+def create_user_vector(selected_movies):
+    user_ratings = np.zeros(movies.shape[0])
     for movie_id, rating in selected_movies.items():
         if movie_id in movie_id_map:
-            index = movie_id_map[movie_id]
-            user_ratings[index] = rating
+            user_ratings[movie_id_map[movie_id]] = rating
     return csr_matrix(user_ratings.reshape(1, -1))
 
 # Recommend Movies
 def recommend_movies(user_vector, ratings_matrix, movies, top_n=10):
     st.write(f"DEBUG - User Vector Shape: {user_vector.shape}")
     st.write(f"DEBUG - Ratings Matrix Shape: {ratings_matrix.shape}")
-    
     if user_vector.shape[1] != ratings_matrix.shape[0]:
-        st.error("Dimensional mismatch detected!")
+        st.error("User vector and ratings matrix dimensions do not match.")
         return pd.DataFrame(columns=["title", "genres", "Score"])
-    
+
     similarity = cosine_similarity(user_vector, ratings_matrix)[0]
     top_indices = np.argsort(similarity)[-top_n:][::-1]
     recommendations = movies.iloc[top_indices][["title", "genres"]]
@@ -43,40 +53,16 @@ def recommend_movies(user_vector, ratings_matrix, movies, top_n=10):
 st.title("Movie Recommender System")
 st.sidebar.header("Rate Movies")
 
-# Load and Prepare Data
-movies, ratings = load_data()
-
-# Randomly Select 100 Movies
-random_movies = movies.sample(n=100, random_state=42)
-selected_movie_ids = random_movies['movieId'].unique()
-
-# Filter Ratings
-filtered_ratings = filter_ratings(ratings, selected_movie_ids)
-
-# Create Movie ID Map
-movie_id_map = {movie_id: idx for idx, movie_id in enumerate(selected_movie_ids)}
-
-# Build Ratings Matrix
-ratings_matrix = csr_matrix(
-    (
-        filtered_ratings['rating'], 
-        (
-            filtered_ratings['movieId'].map(movie_id_map), 
-            filtered_ratings['userId'] - 1
-        )
-    ),
-    shape=(len(movie_id_map), filtered_ratings['userId'].max() + 1)
-)
-
 # User Ratings Input
 selected_movies = {}
-for index, row in random_movies.iterrows():
+for idx, row in movies.iterrows():
     rating = st.sidebar.slider(f"{row['title']} ({row['genres']})", 1, 5, 3)
     selected_movies[row['movieId']] = rating
 
 # Recommendation Button
 if st.sidebar.button("Show Recommendations"):
-    user_vector = create_user_vector(selected_movies, movie_id_map)
-    recommendations = recommend_movies(user_vector, ratings_matrix, random_movies)
+    user_vector = create_user_vector(selected_movies)
+    recommendations = recommend_movies(user_vector, ratings_matrix, movies)
+
     st.header("Top 10 Recommendations")
     st.table(recommendations)
