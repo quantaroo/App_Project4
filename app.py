@@ -95,7 +95,7 @@ if len(movies) == 0:
     st.error("No movies found. Please provide a valid movies dataset.")
     st.stop()
 
-sample_movies = movies.sample(min(10, len(movies)), random_state=42)
+sample_movies = movies.sample(min(100, len(movies)), random_state=42)
 selected_movies = {}
 st.sidebar.write("**Rate the following movies:**")
 for idx, row in sample_movies.iterrows():
