@@ -18,15 +18,20 @@ def load_data():
 movies, ratings = load_data()
 
 # Create User Rating Vector
-def create_user_vector(selected_movies):
-    user_ratings = np.zeros(movies['movieId'].max())
+def create_user_vector(selected_movies, max_movie_id):
+    user_ratings = np.zeros(max_movie_id)
     for movie_id, rating in selected_movies.items():
-        if movie_id <= len(user_ratings):
+        if 0 <= movie_id - 1 < max_movie_id:
             user_ratings[movie_id - 1] = rating
     return csr_matrix(user_ratings.reshape(1, -1))
 
 # Recommend Movies
 def recommend_movies(user_vector, ratings_matrix, movies, top_n=10):
+    # Ensure Correct Dimensions
+    if user_vector.shape[1] != ratings_matrix.shape[0]:
+        st.error("Dimensional mismatch detected! Check movie and rating data.")
+        return pd.DataFrame(columns=["title", "genres", "Score"])
+    
     similarity = cosine_similarity(user_vector, ratings_matrix)[0]
     top_indices = np.argsort(similarity)[-top_n:][::-1]
     recommendations = movies.iloc[top_indices][["title", "genres"]]
@@ -58,7 +63,7 @@ for _, row in movies.iterrows():
 
 # Recommendation Button
 if st.sidebar.button("Show Recommendations"):
-    user_vector = create_user_vector(selected_movies)
+    user_vector = create_user_vector(selected_movies, max_movie_id)
     recommendations = recommend_movies(user_vector, ratings_matrix, movies)
     
     st.header("Top 10 Recommendations")
