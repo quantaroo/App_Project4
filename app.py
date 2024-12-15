@@ -13,16 +13,16 @@ def load_data():
     movies = pd.read_csv(os.path.join(current_dir, "movies.csv"))
     ratings = pd.read_csv(os.path.join(current_dir, "ratings.csv"))
     
-    # Filter Ratings to Match Movies
-    filtered_ratings = ratings[ratings['movieId'].isin(movies['movieId'])]
-    
-    # Reset movieId to ensure matching matrix indices
+    # Map Movie IDs to Matrix Indices
     movies = movies.reset_index(drop=True)
     movie_id_map = {mid: idx for idx, mid in enumerate(movies['movieId'])}
-    filtered_ratings['movieIndex'] = filtered_ratings['movieId'].map(movie_id_map)
-
+    
+    # Filter Ratings to Match Movie IDs
+    ratings = ratings[ratings['movieId'].isin(movie_id_map)]
+    ratings['movieIndex'] = ratings['movieId'].map(movie_id_map)
+    
     max_movie_id = len(movies)
-    return movies, filtered_ratings, max_movie_id, movie_id_map
+    return movies, ratings, max_movie_id, movie_id_map
 
 movies, ratings, max_movie_id, movie_id_map = load_data()
 
@@ -37,11 +37,11 @@ def create_user_vector(selected_movies, max_movie_id, movie_id_map):
 
 # Recommend Movies
 def recommend_movies(user_vector, ratings_matrix, movies, top_n=10):
-    st.write(f"User Vector Shape: {user_vector.shape}")
-    st.write(f"Ratings Matrix Shape: {ratings_matrix.shape}")
+    st.write(f"DEBUG - User Vector Shape: {user_vector.shape}")
+    st.write(f"DEBUG - Ratings Matrix Shape: {ratings_matrix.shape}")
     
     if user_vector.shape[1] != ratings_matrix.shape[0]:
-        st.error(f"Dimensional mismatch detected! User Vector: {user_vector.shape}, Ratings Matrix: {ratings_matrix.shape}")
+        st.error(f"Dimensional Mismatch! User Vector: {user_vector.shape}, Ratings Matrix: {ratings_matrix.shape}")
         return pd.DataFrame(columns=["title", "genres", "Score"])
     
     similarity = cosine_similarity(user_vector, ratings_matrix)[0]
@@ -72,7 +72,7 @@ if st.sidebar.button("Show Recommendations"):
     user_vector = create_user_vector(selected_movies, max_movie_id, movie_id_map)
     
     if user_vector.shape[1] != ratings_matrix.shape[0]:
-        st.error("User vector and ratings matrix dimensions do not match.")
+        st.error("Critical Error: Mismatch in dimensions!")
         st.write(f"User Vector Shape: {user_vector.shape}")
         st.write(f"Ratings Matrix Shape: {ratings_matrix.shape}")
     else:
