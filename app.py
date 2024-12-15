@@ -58,8 +58,14 @@ movie_id_map = {movie_id: idx for idx, movie_id in enumerate(selected_movie_ids)
 
 # Build Ratings Matrix
 ratings_matrix = csr_matrix(
-    (filtered_ratings['rating'], 
-     (filtered_ratings['movieId'].map(movie_id_map), filtered_ratings['userId'] - 1))
+    (
+        filtered_ratings['rating'], 
+        (
+            filtered_ratings['movieId'].map(movie_id_map), 
+            filtered_ratings['userId'] - 1
+        )
+    ),
+    shape=(len(movie_id_map), filtered_ratings['userId'].max() + 1)
 )
 
 # User Ratings Input
