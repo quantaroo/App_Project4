@@ -22,9 +22,9 @@ def load_data():
     filtered_ratings['movieIndex'] = filtered_ratings['movieId'].map(movie_id_map)
 
     max_movie_id = len(movies)
-    return movies, filtered_ratings, max_movie_id
+    return movies, filtered_ratings, max_movie_id, movie_id_map
 
-movies, ratings, max_movie_id = load_data()
+movies, ratings, max_movie_id, movie_id_map = load_data()
 
 # Create User Rating Vector
 def create_user_vector(selected_movies, max_movie_id, movie_id_map):
@@ -37,6 +37,9 @@ def create_user_vector(selected_movies, max_movie_id, movie_id_map):
 
 # Recommend Movies
 def recommend_movies(user_vector, ratings_matrix, movies, top_n=10):
+    st.write(f"User Vector Shape: {user_vector.shape}")
+    st.write(f"Ratings Matrix Shape: {ratings_matrix.shape}")
+    
     if user_vector.shape[1] != ratings_matrix.shape[0]:
         st.error(f"Dimensional mismatch detected! User Vector: {user_vector.shape}, Ratings Matrix: {ratings_matrix.shape}")
         return pd.DataFrame(columns=["title", "genres", "Score"])
@@ -60,7 +63,6 @@ st.sidebar.header("Rate Movies")
 
 # User Ratings Input
 selected_movies = {}
-movie_id_map = {mid: idx for idx, mid in enumerate(movies['movieId'])}
 for _, row in movies.iterrows():
     rating = st.sidebar.slider(f"{row['title']} ({row['genres']})", 1, 5, 3)
     selected_movies[row['movieId']] = rating
@@ -71,6 +73,8 @@ if st.sidebar.button("Show Recommendations"):
     
     if user_vector.shape[1] != ratings_matrix.shape[0]:
         st.error("User vector and ratings matrix dimensions do not match.")
+        st.write(f"User Vector Shape: {user_vector.shape}")
+        st.write(f"Ratings Matrix Shape: {ratings_matrix.shape}")
     else:
         recommendations = recommend_movies(user_vector, ratings_matrix, movies)
         st.header("Top 10 Recommendations")
