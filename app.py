@@ -1,5 +1,4 @@
 # Streamlit Movie Recommender System
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -17,7 +16,6 @@ def load_data():
     # Filter Ratings to Match Movies
     filtered_ratings = ratings[ratings['movieId'].isin(movies['movieId'])]
     max_movie_id = movies['movieId'].max()
-    
     return movies, filtered_ratings, max_movie_id
 
 movies, ratings, max_movie_id = load_data()
@@ -45,8 +43,8 @@ def recommend_movies(user_vector, ratings_matrix, movies, top_n=10):
 # Build Ratings Matrix
 ratings_matrix = csr_matrix(
     (ratings['rating'], 
-     (ratings['movieId'] - 1, ratings['userId'] - 1)),
-    shape=(max_movie_id, ratings['userId'].max())
+     (ratings['movieId'].map(lambda x: movies[movies['movieId'] == x].index[0]), ratings['userId'] - 1)),
+    shape=(len(movies), ratings['userId'].max())
 )
 
 # Streamlit App
