@@ -16,19 +16,19 @@ movies, ratings = load_data()
 
 # Select 100 Random Movies for Rating
 random_movies = movies.sample(n=100, random_state=42)
-movie_id_map = {row['movieId']: idx for idx, row in random_movies.iterrows()}
+movie_id_map = {movie_id: idx for idx, movie_id in enumerate(random_movies['movieId'].values)}
 
-# Create Ratings Matrix for All Movies
-def create_ratings_matrix(ratings, movies):
-    row_indices = ratings['userId'] - 1
-    col_indices = ratings['movieId'].apply(lambda x: movie_id_map.get(x, -1))
-    valid_indices = col_indices >= 0
-    data = ratings.loc[valid_indices, 'rating']
-    row_indices = row_indices[valid_indices]
-    col_indices = col_indices[valid_indices]
-    return csr_matrix((data, (col_indices, row_indices)), shape=(100, ratings['userId'].max()))
+# Filter Ratings for Selected Movies Only
+filtered_ratings = ratings[ratings['movieId'].isin(random_movies['movieId'])]
 
-ratings_matrix = create_ratings_matrix(ratings, random_movies)
+# Create Ratings Matrix for 100 Movies
+def create_ratings_matrix(filtered_ratings, movie_id_map):
+    row_indices = filtered_ratings['userId'] - 1
+    col_indices = filtered_ratings['movieId'].map(movie_id_map)
+    data = filtered_ratings['rating']
+    return csr_matrix((data, (col_indices, row_indices)), shape=(100, filtered_ratings['userId'].max()))
+
+ratings_matrix = create_ratings_matrix(filtered_ratings, movie_id_map)
 
 # User Rating Input Function
 def create_user_vector(selected_movies, movie_id_map):
